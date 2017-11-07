@@ -49,4 +49,4 @@ function ScanSentence(msg) { // this saves our last message as words in a string
     return sentence;
 }
 
-bot.login('MzE4MjQ0NzMzOTc1NjU4NDk2.DAvkDA.hcDVTCI0IVhGjPjgnAjWjaUnTIE'); 
+bot.login('/*private key pls no steal*/'); 
