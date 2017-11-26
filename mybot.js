@@ -79,7 +79,18 @@ function GetSentence(msg) { // this saves our last message as words in a string[
 }
 
 function GetCommand(sentence) {
-    // removed //
+    var cmdKeys = Object.keys(Commands);
+    for (i = 0; i < cmdKeys.length; i++) { //scans child objects in Commands object
+        for (j = 0; j < Commands[cmdKeys[i]].length; j++) { //scans strings in object[i]
+            for (k = 0; k < sentence.length; k++ ) { //compares them to my sentence
+                if (sentence[k] == Commands[cmdKeys[i]][j]) { // eg. Commands > online > "alive"
+                    console.log("Command detected! string: "+sentence[k]+", object: "+cmdKeys[i]);
+                    return cmdKeys[i];
+                }
+            }      
+        }             
+    }
+    return "";
 }
 
 bot.login(/*private key pls no steal*/); 
