@@ -146,22 +146,7 @@ exports.Start = function() {
                     cmds : ["-", "del", "take", "steal", "mug", "del"],
                     desc : "Risk taking some points away from *target(s)*"},},            
             methods : function(command, message) {
-                /*var option = Object.keys(command.more)[0];
-                var target = message.mentions.users;
-
-                target.forEach(function(u){
-                    switch (option) {
-                        case "Give" :
-                            Speak("add points hook", message);
-                            break;
-                        case "Take" :
-                            Speak("take points hook", message);
-                            break;
-                        case "Bet" :
-                            Speak("bet points hook", message);
-                            break;
-                    }
-                })*/
+                // will add this later probably
             }
         },
 
@@ -253,8 +238,6 @@ exports.Start = function() {
                 Print : {
                     cmds : ["print", "show", "say", "list"],
                     desc : "Returns the list of whitelisted users"}},
-            //response : {
-                //Error : ["I can't, <user> is <error> a saved user", "Beep boop error <user> is <error> saved"]},
             methods : function(command, message) {
                 var option = Object.keys(command.more)[0];
                 var target = message.mentions.users;
@@ -299,7 +282,7 @@ exports.Start = function() {
                     }
                 })   
 
-                var response = cache.join(", "); //core.Users.reponse[Random(0, core.Users.reponse.length)]
+                var response = cache.join(", ");
 
                 if ((option == "Save" && exists) || (option == "Remove" && !exists)) {
                     if (option == "Save") response += (cache.length > 1 ? " are already saved users" : " is already a saved user");
@@ -385,7 +368,7 @@ exports.Start = function() {
                         }); break;
                 }
 
-                if(!embed.description.includes("<header>")) { // if code was ran
+                if(!embed.description.includes("<header>")) { // if result
                     if(i == 1) option = option.slice(0, option.length - 1);
                     embed.fields[0].name += i + " " + option.toLowerCase() + " available";
                     embed.fields[0].value += "*Stored on "+wf.timestamp+"*";
@@ -395,6 +378,7 @@ exports.Start = function() {
         },
     }
 
+    // discord events //
     bot.on("ready", () => {
         console.log("not mutiny has started, with "+bot.users.size+" users, in "+bot.channels.size+" channels of "+bot.guilds.size+" guilds.");
     });
@@ -408,9 +392,7 @@ exports.Start = function() {
             if (!command.lock)
                 Think(command, message);
 
-            else if (Object.keys(command.more).length > 0) {
-                console.log("Locked! " +message.author.username+ "does not meet the level requirement for "+command.key);
-            }
+            else console.log("Locked! " + message.author.username + " does not meet level requirement for " + command.key);
         }
 
         if(Debug) {
@@ -429,10 +411,33 @@ exports.Start = function() {
         if(user.id == '127655681754005504') messageReaction.remove(bot.user.id)
     });
 
+    // convenience methods //
     function Think(command, message) {
         core[command.key].methods(command, message);
     }
-
+    
+    function Speak(response, message) {
+        message.channel.startTyping();
+        setTimeout(function(){
+            message.channel.stopTyping();
+            if (typeof response == "string") 
+                message.channel.send(response);
+            else if (typeof response == "object") {
+                var keys = Object.keys(response);
+                if(keys[0] == "embed")
+                    message.channel.send(response);
+                else return;
+            }
+        }, 250 + Math.random() * 750);
+    }
+    
+    function Random(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min)) + min;
+    }
+    
+    // robot methods //
     function GetEmbed(command) {
         var faces = core.Faces.response;
         faces = "  " + faces.embed[Random(0,faces.embed.length)];
@@ -455,35 +460,15 @@ exports.Start = function() {
         }}
     }
 
-    function Speak(response, message) {
-        message.channel.startTyping();
-        setTimeout(function(){
-            message.channel.stopTyping();
-            if (typeof response == "string") 
-                message.channel.send(response);
-            else if (typeof response == "object") {
-                var keys = Object.keys(response);
-                if(keys[0] == "embed")
-                    message.channel.send(response);
-                else return;
-            }
-        }, 250 + Math.random() * 750);
-    }
-
-    function Random(min, max) {
-        min = Math.ceil(min);
-        max = Math.floor(max);
-        return Math.floor(Math.random() * (max - min)) + min;
-    }
-
     function GetHelp(command, message) {
         var res = GetEmbed(command), embed = res.embed;
-        var user = GetUser(message), i = 0;
+        var user = GetUser(message);
 
         var level = user || "guest"; // gets user level of author
         if(typeof level.sudo == "boolean") level = level.sudo ? "admin" : "whitelisted"; 
 
-        if(command.key == "$DEFAULT") { // if no command supplied
+        if(command.key == "$DEFAULT") { // if no command is supplied
+            
             embed.description = embed.description.replace("<header>", "Here are my commands");
             embed.fields[0].name = ":black_small_square:  Made with https://discord.js.org/ !";
             
@@ -494,9 +479,9 @@ exports.Start = function() {
             guest += "`[ help ]`  Returns bot data if paired with a command \n\n";
             var i = [0, 0, 1]; // [users, admin, guest]
 
-            for(var key in core) { // pushes formatted commands into their cached strings
+            for(var key in core) { // pushes formatted commands into their respective cache
                 var target = core[key], braces = target.command[0] ? "`[ - ]`" : "`{ - }`";
-                var cmd = target.command[0] || key.toLowerCase(); // if no command use key
+                var cmd = target.command[0] || key.toLowerCase(); // if no command save key
 
                 switch (target.require) {
 
@@ -527,7 +512,7 @@ exports.Start = function() {
             if(i[1] < 2) admin = admin.replace("commands", "command");
             if(i[2] < 2) guest = guest.replace("commands", "command");
 
-            switch(level) { // generates footer with user level and flavor text
+            switch(level) { // generates footer w/ user level and flavor text
 
                 case "admin" :
                     var flavorText = ["Too OP pls nerf.", "Am I behaving well?", "Glory be upon you."];
@@ -548,14 +533,14 @@ exports.Start = function() {
             embed.fields[0].value = guest + users + admin;
             embed.fields[0].value += "( *You're " + level + "* )";
 
-        } else {
+        } else { // command is specified, dump all info about command
 
-            var target = core[command.key];
+            var target = core[command.key], i = 0;
 
-            if(target.summary == false) return; // hides from help
+            if(target.summary == false) return; // command is excluded from help menu
             var subject = command.word || Object.keys(command.more)[0].toLowerCase();
             embed.description = embed.description.replace("<header>", "Here's what I know about **" + subject + "**");
-            embed.fields[0].name += target.summary || "No description available!";
+            embed.fields[0].name += target.summary || "No summary available!";
             if(target.picture) embed.thumbnail.url = target.picture;
 
             // generates commands row
@@ -573,7 +558,7 @@ exports.Start = function() {
             // generates options column
             for(var keys in target.options) {
                 if(i < 1) embed.fields[0].value += "\n\n**<i> options available**\n\n";
-                embed.fields[0].value += "    **"+keys+"**  `[ "+target.options[keys].cmds.join(", ")+" ]`\n";                
+                embed.fields[0].value += "    **" + keys + "**  `[ " + target.options[keys].cmds.join(", ") + " ]`\n";                
                 embed.fields[0].value += "    " + target.options[keys].desc + " \n\n";
                 i++;
             }
@@ -607,14 +592,14 @@ exports.Start = function() {
             if(target.require == null) privacy = "guest";
             if(target.require == "admin") privacy = "admin";
 
-            embed.fields[0].value += "( *Requires " + privacy +" account. You're "+ level +"!* )";      
+            embed.fields[0].value += "( *Requires " + privacy + " account. You're " + level + "!* )";      
         }
         
         return res;
     }
 
     function GetSentence(message) {
-        var del = [".", "!"];
+        var del = [".", "!", "?"];
         var raw = message.content.split(" ");
         var res = [];
     
@@ -647,6 +632,7 @@ exports.Start = function() {
                     if(user && user.sudo) res = true;
                     else if(user && perms != "admin") res = true;
                     else if(perms == "guest") res = true;
+                    if(res) break;
                 }
             }
         }
@@ -663,15 +649,8 @@ exports.Start = function() {
 
         return res;
     }
-
-    function UpdateWarframeJSON() {
-        axios.get('https://ws.warframestat.us/pc')
-        .then(function(response){
-            wf = response.data;
-        });
-    }
     
-    function GetCommand(message, summoned) {
+    function GetCommand(message, summoned) { // this should be cleaned
         if(!summoned) return;
 
         var user = GetUser(message), cache = [];
@@ -758,6 +737,13 @@ exports.Start = function() {
         else if(!core[result.key].require) result.lock = false;
     
         return result;
+    }
+    
+    function UpdateWarframeJSON() { // return this
+        axios.get('https://ws.warframestat.us/pc')
+        .then(function(response){
+            wf = response.data;
+        });
     }
 
     bot.login(/* private key pls no steal */);
