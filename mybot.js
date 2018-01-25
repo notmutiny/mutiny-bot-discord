@@ -15,32 +15,32 @@ exports.Start = function() {
 
     const GoogleSearch = require('google-search');
     const search = new GoogleSearch({
-        key: " private key pls no steal ",
-        cx: " private key pls no steal "
+        // key: private key pls no steal,
+        // cx: private key pls no steal
     });
 
     var Names = {
         "admin" : ["bot", "slave"],
-      //"users" : ["hurr", "durr"], (reminder I can do this if needed)
+        // "users" : ["hurr", "durr"], (reminder I can do this if needed)
         "guest" : ["nm", "mutiny bot", "not mutiny", "@!318244733975658496"],
     }
     
     var wf = "";
-    //warframestat.us/pc
+    // warframestat.us/pc
     UpdateWarframeJSON();
 
-    //fast debug info
+    // fast debug info
     var Debug = false;
 
-   /* [reference]     (* means required)
+   /*   [reference]     ( * means required! )
     *
-    * Object key* :    
-    *      command* : ["words", "to", "invoke", "key"] || (false)
-    *      summary* : header description, false hides from help
-    *      picture  : image link that spawns thumbnails in help
-    *      require  : "users" || "admin" (< requires user level)
-    *      options  : extra commands for easier method building
-    *      methods  : code that fires on aforementioned command
+    *   Object key* :    
+    *       command* : ["words", "to", "invoke", "key"] || false
+    *       summary* : command description, false hides from help
+    *       picture  : image link that spawns thumbnails in help
+    *       require  : (requires account lvl) "users" || "admin" 
+    *       options  : extra commands for easier method building
+    *       methods  : code that fires on aforementioned command
     */
 
     var core = {
@@ -91,7 +91,7 @@ exports.Start = function() {
                                 break; }}
                         if (result) {
                             if (option == "Playing") bot.user.setGame(result);
-                          //if (option == "Username") bot.user.setUsername(result); disabled to prevent abuse
+                            //if (option == "Username") bot.user.setUsername(result); disabled to prevent abuse
                             if (option == "Nickname") message.guild.members.get(bot.user.id).setNickname(result);
                         } else console.log("Error: "+command.key+" could not generate "+option.toLowerCase()+"!");
                         break;
@@ -533,7 +533,7 @@ exports.Start = function() {
             embed.fields[0].value = guest + users + admin;
             embed.fields[0].value += "( *You're " + level + "* )";
 
-        } else { // command is specified, dump all info about command
+        } else { // command is specified, dump all info about it
 
             var target = core[command.key], i = 0;
 
@@ -559,7 +559,7 @@ exports.Start = function() {
             for(var keys in target.options) {
                 if(i < 1) embed.fields[0].value += "\n\n**<i> options available**\n\n";
                 embed.fields[0].value += "    **" + keys + "**  `[ " + target.options[keys].cmds.join(", ") + " ]`\n";                
-                embed.fields[0].value += "    " + target.options[keys].desc + " \n\n";
+                embed.fields[0].value += "    " + target.options[keys].desc + "\n\n";
                 i++;
             }
 
@@ -719,7 +719,7 @@ exports.Start = function() {
                         if (help) Speak(help, message);
                         return;
                     }
-                } else { // only help (merge these two paths)
+                } else { // only help (merge these two paths later)
                     result.key = "$DEFAULT";
                     var help = GetHelp(result, message);
                     if (help) Speak(help, message);
@@ -728,7 +728,7 @@ exports.Start = function() {
             }
         }
     
-        // lets me if(command)
+        // lets me use if(command)
         if(!result.key) return; 
     
         // grabs .lock, handles user permissions
