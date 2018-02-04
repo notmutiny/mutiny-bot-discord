@@ -19,9 +19,12 @@ exports.Start = function() {
         // cx: private key pls no steal
     });
 
+    // fast debug info
+    var Debug = true;
+
     var Names = {
         "admin" : ["bot", "slave"],
-        // "users" : ["hurr", "durr"], (reminder I can do this if needed)
+        //"users" : ["hurr", "durr"], (reminder I can do this if needed)
         "guest" : ["nm", "mutiny bot", "not mutiny", "@!318244733975658496"],
     }
     
@@ -29,20 +32,17 @@ exports.Start = function() {
     // warframestat.us/pc
     UpdateWarframeJSON();
 
-    // fast debug info
-    var Debug = false;
-
-   /*   [reference]     ( * means required! )
-    *
-    *   Object key* :    
-    *       command* : ["words", "to", "invoke", "key"] || false
-    *       summary* : command description, false hides from help
-    *       picture  : image link that spawns thumbnails in help
-    *       require  : (requires account lvl) "users" || "admin" 
-    *       options  : extra commands for easier method building
-    *       methods  : code that fires on aforementioned command
-    */
-
+        /*  [reference]     ( * means required! )
+        *
+        *   Object key* :    
+        *       command* : ["words", "to", "invoke", "key"] || false
+        *       summary* : command description || false hide in help
+        *       picture  : image link that spawns thumbnails in help
+        *       require  : (requires account lvl) "users" || "admin" 
+        *       options  : extra commands for easier method building
+        *       methods  : code that fires on aforementioned command
+        */
+    
     var core = {
 
         Discord : {
@@ -53,18 +53,25 @@ exports.Start = function() {
             options : {
                 Delete : {
                     cmds : ["delete", "delet"],
-                    desc : "Deletes the last post in this channel from <username>" },
+                    desc : "Deletes the previous comment from <username>" },
+                Listening : {
+                    cmds : ["listen", "listening"],
+                    desc : "Changes <username>s (global) listening activity"},
                 Playing : {
-                    cmds : ["game", "playing", "play", "status"],
-                    desc : "Changes <username>s now playing string globally"},
+                    cmds : ["game", "play", "playing"],
+                    desc : "Changes <username>s (global) playing activity"},
                 Nickname : {
                     cmds : ["nickname", "name"],
                     desc : "Changes <username>s nickname on this server"},
                 Uptime : {
                     cmds : ["uptime", "session"],
-                    desc : "Checks <username>s current session uptime"}},
+                    desc : "Responds <username>s current session uptime"},
+                Watching : {
+                    cmds : ["watch", "watching"],
+                    desc : "Changes <username>s (global) watching activity"}},
             methods : function(command, message){
                 var option = Object.keys(command.more)[0];
+                var string = message.content;
     
                 switch(option) {
                     case "Delete" :
@@ -80,29 +87,27 @@ exports.Start = function() {
                         var s = ""; if (time[2] > 0) s = time[2] + " seconds";
                         Speak("I have been running for "+h+m+s, message);
                         break;
+                    case "Listening" :
                     case "Playing" :
                     case "Nickname" :
-                        var result = "";
-                        for (var flags in command.more[option]) {
-                            flags = command.more[option][flags];
-                            if (message.content.includes(flags)) {
-                                var index = message.content.indexOf(flags) + flags.length + 1;
-                                result = message.content.substring(index, message.content.length);
-                                break; }}
+                    case "Watching" :
+                        var task = command.more[option], result = "";
+                        var i = string.indexOf(task) + task.length + 1;
+                        var result = string.substring(i, string.length);
+                        
                         if (result) {
                             if (option == "Playing") bot.user.setGame(result);
                             //if (option == "Username") bot.user.setUsername(result); disabled to prevent abuse
                             if (option == "Nickname") message.guild.members.get(bot.user.id).setNickname(result);
+                            if (option == "Listening") bot.user.setActivity(result, { type: "LISTENING" });
+                            if (option == "Watching") bot.user.setActivity(result, { type: "WATCHING" });
                         } else console.log("Error: "+command.key+" could not generate "+option.toLowerCase()+"!");
                         break;
-                    default :
-                        var help = GetHelp(command, message);
-                        if (help) Speak(help, message);
                 }
             }
         },
     
-        Faces : {
+        Faces : { // convert to generic responses
             command : false,     
             summary : false, 
             require : "users",
@@ -120,13 +125,31 @@ exports.Start = function() {
                 embed : ["´ ▽ ` )ﾉ","ヾ(＾∇＾)","(´・ω・｀)","\_(:3」∠)\\\_", "(°ロ°) !"]},
             methods : function(command, message){
                 var emotion = Object.keys(command.more)[0];
-                var face = core.Faces.response[emotion];
-                var trigger = command.more[emotion][0];
+                var trigger = command.more[emotion];
                 var sentence = GetSentence(message);
-    
                 if (sentence.indexOf(trigger) == -1) return;
-                if (face) face = face[Random(0, face.length)];
-                if (face) Speak(face, message);
+
+                var face = RandomValue(core.Faces.response[emotion]);
+                Speak(face, message);
+            }
+        },
+
+        Logs : {
+            command : ["logs", "log"],
+            summary : "Check history or config <username>s logs",
+            require : "admin",
+            options : {
+                View : {
+                    cmds : ["view", "post"],
+                    desc : "View the last few log entries"}},
+            methods : function(command, message) {
+                // will add this later probably
+                var task = Object.keys(command.more)[0].toLowerCase();
+
+                switch (task) {
+                    case "view" :
+                        //console.log(Logs);
+                }
             }
         },
     
@@ -170,7 +193,7 @@ exports.Start = function() {
                     desc : "Youtube search results"}},
             methods : function(command, message) {
                 var SearchSite = Object.keys(command.more)[0] || "";
-                var SitePhrase = SearchSite ? command.more[SearchSite][0] : "";
+                var SitePhrase = SearchSite ? command.more[SearchSite] : "";
                 var sentence = GetSentence(message);
 
                 var index = message.content.search(command.word) + command.word.length + 1;
@@ -225,40 +248,42 @@ exports.Start = function() {
     
         Users : {
             command : ["user"],
-            picture : "https://i.imgur.com/Ik6B7YF.png",
-            summary : "Change the bots whitelisted users",
+            picture : "https://i.imgur.com/uv7IKNG.png", //"https://i.imgur.com/Ik6B7YF.png",
+            summary : "Change <username>s whitelisted users",
             require : "admin",
             options : {
                 Save : {
                     cmds : ["add", "save", "listen"],
-                    desc : "Saves target(s) to bot whitelist"},
+                    desc : "Saves target(s) to <username>s whitelist"},
                 Remove : {
                     cmds : ["delete", "remove"],
-                    desc : "Deletes target(s) from bot whitelist"},
-                Print : {
-                    cmds : ["print", "show", "say", "list"],
-                    desc : "Returns the list of whitelisted users"}},
+                    desc : "Deletes target(s) from <username>s whitelist"},
+                List : {
+                    cmds : ["list", "print", "who"],
+                    desc : "Returns the list of whitelisted user data"}},
             methods : function(command, message) {
                 var option = Object.keys(command.more)[0];
                 var target = message.mentions.users;
 
-                if (option == "Print") {
+                if (option == "List") { // builds saved users list
                     var res = GetEmbed(command), embed = res.embed;
+                    var str = Users.length > 1 ? "users" : "user";
 
-                    embed.description = embed.description.replace("<header>", "Here's a list of my saved users")
-                    embed.fields[0].name += Users.length + " saved " + (Users.length > 1 ? "users" : "user");
+                    embed.description = embed.description.replace("<header>", "Here's a list of my saved users");
+                    embed.fields[0].name += String.format("{0} whitelisted {1}", Users.length, str);
                     embed.thumbnail.url = core.Users.picture;
 
-                    Users.forEach(function(u){
-                        embed.fields[0].value += "**"+u.name+"**";
-                        if(u.sudo) embed.fields[0].value += "  ( bot admin )";
-                        embed.fields[0].value += "\n`[ "+u.id+" ]`\n\n";
+                    Users.forEach(function(u){ // generates each users information
+                        embed.fields[0].value += String.format("**{0}**", u.name);
+                        if (u.sudo) embed.fields[0].value += "  ( bot admin )";
+                        embed.fields[0].value += String.format("\n`[ {0} ]`\n\n", u.id);
                     })
 
                     Speak(res, message);
                     return;
                 }
 
+                // else edit saved user
                 var exists, cache = [];
                     
                 target.forEach(function(u) {
@@ -284,13 +309,13 @@ exports.Start = function() {
 
                 var response = cache.join(", ");
 
-                if ((option == "Save" && exists) || (option == "Remove" && !exists)) {
+                if ((option == "Save" && exists) || (option == "Remove" && !exists)) { // throw error
                     if (option == "Save") response += (cache.length > 1 ? " are already saved users" : " is already a saved user");
                     if (option == "Remove") response += (cache.length > 1 ? " are not saved users" : " is not a saved user");
                     Speak(response, message);
                 }
 
-                else {
+                else { // request valid, success!
                     response += " was " + (option == "Save" ? "saved to" : "removed from") + " my users";
                     if (cache.length > 1) response = response.replace("was", "were");
                     Speak(response, message);
@@ -308,7 +333,7 @@ exports.Start = function() {
                     desc : "<#a> mission alerts available" },
                 Deals : {
                     cmds : ["deals", "deal", "darvo"],
-                    desc : "<#d> deals on sale from Darvo" },
+                    desc : "<#d> daily deals from Darvo" },
                 Fissures : {
                     cmds : ["fissures", "fissure"],
                     desc : "<#f> void fissure missions" },
@@ -320,7 +345,8 @@ exports.Start = function() {
                     desc : "<#v>" }},
             methods : function(command, message) {
                 var option = Object.keys(command.more)[0], i = 0;
-                var res = GetEmbed(command), embed = res.embed;
+                var result = GetEmbed(command), embed = result.embed;
+                var value = embed.fields[0].value, name = embed.fields[0].name;
 
                 switch (option) {
                     case "Trader" : 
@@ -332,52 +358,56 @@ exports.Start = function() {
                     case "Alerts" :
                         embed.description = embed.description.replace("<header>", "Here's the current mission alerts");
                         wf.alerts.forEach(function(a){
-                            embed.fields[0].value += "**"+a.mission.reward.asString+"**  `"+a.eta+"`\n";
-                            embed.fields[0].value += a.mission.type+", "+a.mission.node+"\n\n";
+                            embed.fields[0].value += String.format("**{0}**  `{1}` \n", a.mission.reward.asString, a.eta);
+                            embed.fields[0].value += String.format("{0}, {1} \n\n", a.mission.type, a.mission.node);
                             i++;
                         }); break;
 
                     case "Deals" :
                         embed.description = embed.description.replace("<header>", "Here's the current daily deals");
-                        wf.dailyDeals.forEach(function(a){
-                            embed.fields[0].value += "**" + a.item + "**  `" + a.eta + "`\n";
-                            embed.fields[0].value += a.sold + " sold at " + a.discount + "% off!  *~~"+a.originalPrice+"~~*  "+a.salePrice+" platinum \n\n";
+                        wf.dailyDeals.forEach(function(d){
+                            embed.fields[0].value += String.format("**{0}**  `{1}` \n", d.item, d.eta);
+                            embed.fields[0].value += String.format("{0} sold at {1}% off!  *~~{2}~~*  {3} platinum \n\n", d.sold, d.discount, d.originalPrice, d.salePrice);
                             i++;
                         }); break;
 
                     case "Fissures" :
                         embed.description = embed.description.replace("<header>", "Here's the current void fissues");
-                        wf.fissures.forEach(function(a){
-                            embed.fields[0].value += "**"+a.tier+"**  `"+a.eta+"`\n";
-                            embed.fields[0].value += a.missionType+", "+a.node+"\n\n";
+                        wf.fissures.forEach(function(f){
+                            embed.fields[0].value += String.format("**{0}**  `{1}` \n", f.tier, f.eta);
+                            embed.fields[0].value += String.format("{0}, {1} \n\n", f.missionType, f.node);
                             i++;
                         }); break;
 
                     case "Invasions" :
                         embed.description = embed.description.replace("<header>", "Here's the current faction invasions");
-                        wf.invasions.forEach(function(a){
-                            if(a.completed) return;
-                            if(a.attackerReward.asString)
-                                embed.fields[0].value += "**" + a.attackerReward.asString + "**";
-                            if(a.defenderReward.asString) {
-                                if(a.attackerReward.asString) embed.fields[0].value += ", ";
-                                embed.fields[0].value += "**" + a.defenderReward.asString + "**";
+                        wf.invasions.forEach(function(w){
+                            if(w.completed) return;
+                            if(w.attackerReward.asString)
+                                embed.fields[0].value += String.format("**{0}**", w.attackerReward.asString);
+                            if(w.defenderReward.asString) {
+                                if(w.attackerReward.asString) embed.fields[0].value += ", ";
+                                embed.fields[0].value += String.format("**{0}**", w.defenderReward.asString);
                             }
-                            embed.fields[0].value += " `"+a.eta+"`\n"+a.attackingFaction+" vs "+a.defendingFaction+", "+a.node+"\n\n";
+                            embed.fields[0].value += String.format(" `{0}` \n{1} vs {2}, {3} \n\n", w.eta, w.attackingFaction, w.defendingFaction, w.node);
                             i++;
                         }); break;
+
+                    default :
+                        var help = GetHelp(command, message);
+                        if (help) Speak(help, message);
                 }
 
                 if(!embed.description.includes("<header>")) { // if result
                     if(i == 1) option = option.slice(0, option.length - 1);
                     embed.fields[0].name += i + " " + option.toLowerCase() + " available";
                     embed.fields[0].value += "*Stored on "+wf.timestamp+"*";
-                    Speak(res, message);
+                    Speak(result, message);
                 }
             }
         },
     }
-
+    
     // discord events //
     bot.on("ready", () => {
         console.log("not mutiny has started, with "+bot.users.size+" users, in "+bot.channels.size+" channels of "+bot.guilds.size+" guilds.");
@@ -392,7 +422,10 @@ exports.Start = function() {
             if (!command.lock)
                 Think(command, message);
 
-            else console.log("Locked! " + message.author.username + " does not meet level requirement for " + command.key);
+            else {
+                var error = String.format("Locked! {0} does not meet level for {1}!", message.author.username, command.key);
+                console.log(error); // save error to log when im not lazy
+            }
         }
 
         if(Debug) {
@@ -411,11 +444,14 @@ exports.Start = function() {
         if(user.id == '127655681754005504') messageReaction.remove(bot.user.id)
     });
 
-    // convenience methods //
+    // <-- convenience methods --> //
+
+    // automates callback methoding
     function Think(command, message) {
         core[command.key].methods(command, message);
     }
-    
+
+    // use for sending channel comments
     function Speak(response, message) {
         message.channel.startTyping();
         setTimeout(function(){
@@ -431,20 +467,40 @@ exports.Start = function() {
         }, 250 + Math.random() * 750);
     }
     
+    // returns random number
     function Random(min, max) {
         min = Math.ceil(min);
         max = Math.floor(max);
         return Math.floor(Math.random() * (max - min)) + min;
     }
+
+    // returns random array item
+    function RandomValue(array) {
+        if (!Array.isArray(array)) return;
+        var res = array[Random(0, array.length)];
+        return res;
+    }
+
+    // String.format("{0}", myString); ( <3 c# )
+    if (!String.format) { // blackmagic I stole from stackoverflow
+        String.format = function(format) { // wiggity wherp how does this werk
+            var args = Array.prototype.slice.call(arguments, 1); // ??? *confused squinty eyes*
+            return format.replace(/{(\d+)}/g, function(match, number) { // "ohh I get it" <- (doesnt get it at all)
+                return typeof args[number] != 'undefined'
+                    ? args[number] : match;
+            });
+        };
+    }
     
-    // robot methods //
+    // <-- functional methods --> //
+
+    // embed with default values
     function GetEmbed(command) {
-        var faces = core.Faces.response;
-        faces = "  " + faces.embed[Random(0,faces.embed.length)];
-        var target = command.key != "$DEFAULT" ? command.key : "Faces"; // this line is a hack pls dont do this
+        var target = command.key != "$DEFAULT" ? command.key : "Faces"; // this is a hack pls dont do this
 
         return {embed: {
-            description : "<header>" + faces,
+            description : "<header>  " + RandomValue(core.Faces.response.embed),
+            // modify description in other scope w/ .replace("<header>", value);
             color: 10249740,
             footer : {
                 icon_url : "https://avatars3.githubusercontent.com/u/24806578",
@@ -460,6 +516,11 @@ exports.Start = function() {
         }}
     }
 
+    /**
+     * Generates help embed, forks between $DEFAULT (no command) and command object
+     * @param { command{} } command 
+     * @param { message{} } message 
+     */
     function GetHelp(command, message) {
         var res = GetEmbed(command), embed = res.embed;
         var user = GetUser(message);
@@ -468,136 +529,138 @@ exports.Start = function() {
         if(typeof level.sudo == "boolean") level = level.sudo ? "admin" : "whitelisted"; 
 
         if(command.key == "$DEFAULT") { // if no command is supplied
-            
-            embed.description = embed.description.replace("<header>", "Here are my commands");
+            embed.description = embed.description.replace("<header>", "Here's a list of my commands");
             embed.fields[0].name = ":black_small_square:  Made with https://discord.js.org/ !";
             
-            // generate commands and parent fields
-            var users = ":lock:  **<i> whitelist commands** \n\n";
-            var admin = ":closed_lock_with_key:  **<i> administrator commands** \n\n";
-            var guest = ":unlock:  **<i> guest commands** \n\n";
+            // generate commands and respective parent fields
+            var g = 1, guest = ":unlock:  **<g> guest commands** \n\n";
+            var u = 0, users = ":lock:  **<u> whitelist commands** \n\n";
+            var a = 0, admin = ":closed_lock_with_key:  **<a> administrator commands** \n\n";
             guest += "`[ help ]`  Returns bot data if paired with a command \n\n";
-            var i = [0, 0, 1]; // [users, admin, guest]
 
-            for(var key in core) { // pushes formatted commands into their respective cache
-                var target = core[key], braces = target.command[0] ? "`[ - ]`" : "`{ - }`";
-                var cmd = target.command[0] || key.toLowerCase(); // if no command save key
-
-                switch (target.require) {
-
-                    case "users" :
-                        if (!target.summary) break;
-                        users += braces.replace("-", cmd) + "  " + target.summary + "\n\n";
-                        i[0] += 1; break;
-
-                    case "admin" :
-                        if (!target.summary) break;
-                        admin += braces.replace("-", cmd) + "  " + target.summary + "\n\n";
-                        i[1] += 1; break;
-
-                    default :
-                        if (!target.summary) break;
-                        guest += braces.replace("-", cmd) + "  " + target.summary + "\n\n";
-                        i[2] += 1; break;
+            for(var key in core) {
+                if (core[key].summary) { // formats cmd, adds to string
+                    var cmd = core[key].command[0] || key.toLowerCase();
+                    var braces = core[key].command[0] ? "`[ "+cmd+" ]`" : "`{ "+cmd+" }`";
+                    var element = String.format("{0}  {1}\n\n", braces, core[key].summary);
+    
+                    switch (core[key].require) {
+                        case "users" :
+                            u += 1, users += element; 
+                            break;
+                        case "admin" :
+                            a += 1, admin += element;
+                            break;
+                        default :
+                            g += 1, guest += element;
+                            break;
+                    }
                 }
             }
 
-            // adds number of category commands
-            users = users.replace("<i>", i[0]);
-            admin = admin.replace("<i>", i[1]);
-            guest = guest.replace("<i>", i[2]);
+            // adds total number of commands
+            guest = guest.replace("<g>", g);
+            users = users.replace("<u>", u);
+            admin = admin.replace("<a>", a);
 
             // fixes plural commands with singular number
-            if(i[0] < 2) users = users.replace("commands", "command");
-            if(i[1] < 2) admin = admin.replace("commands", "command");
-            if(i[2] < 2) guest = guest.replace("commands", "command");
+            if(g < 2) guest = guest.replace("commands", "command");
+            if(u < 2) users = users.replace("commands", "command");
+            if(a < 2) admin = admin.replace("commands", "command");
 
-            switch(level) { // generates footer w/ user level and flavor text
+            // generates user level + flavor text footer
+            var AdminText = ["Too OP pls nerf.", "Am I behaving well?", "Glory be upon you."];
+            var UsersText = ["Entries with { } don't use a command!", "Try combining help and a command!"];
+            var GuestText = ["Uh oh, stranger danger!", "Entries with { } don't use a command!", "Try combining help and a command!"];
+
+            switch(level) {
 
                 case "admin" :
-                    var flavorText = ["Too OP pls nerf.", "Am I behaving well?", "Glory be upon you."];
-                    flavorText = flavorText[Random(0, flavorText.length)];
-                    level = "an " + level + "! " + flavorText; break;
+                    var flavor = RandomValue(AdminText);
+                    level = String.format("an {0}! {1}", level, flavor);
+                    break;
 
                 case "whitelisted" :
-                    var flavorText = ["Entries with { } don't use a command!", "Try combining help and a command!"];
-                    flavorText = flavorText[Random(0, flavorText.length)];
-                    level = "whitelisted. " + flavorText; break;
+                    var flavor = RandomValue(UsersText);
+                    level = String.format("{0}. {1}", level, flavor);
+                    break;
 
                 default :
-                    var flavorText = ["Uh oh, stranger danger!", "Entries with { } don't use a command!", "Try combining help and a command!"];
-                    flavorText = flavorText[Random(0, flavorText.length)];
-                    level = "a " + level + ". " + flavorText; break;
+                    var flavor = RandomValue(GuestText);
+                    level = String.format("a {0}. {1}", level, flavor);
+                    break;
             }
 
+            // combine everything generated to make embed
             embed.fields[0].value = guest + users + admin;
-            embed.fields[0].value += "( *You're " + level + "* )";
+            embed.fields[0].value += String.format("( *You're {0}* )", level);
 
         } else { // command is specified, dump all info about it
 
-            var target = core[command.key], i = 0;
+            var i = 0, target = core[command.key];
+            if(target.summary == false) return;
 
-            if(target.summary == false) return; // command is excluded from help menu
             var subject = command.word || Object.keys(command.more)[0].toLowerCase();
             embed.description = embed.description.replace("<header>", "Here's what I know about **" + subject + "**");
             embed.fields[0].name += target.summary || "No summary available!";
             if(target.picture) embed.thumbnail.url = target.picture;
 
             // generates commands row
-            if(target.command) target.command.forEach(function(c){
-                if(i < 1) embed.fields[0].value = "**Commands**  `[ ";
-                embed.fields[0].value += c;
+            var commands = target.command ? "" : "n/a";
+            embed.fields[0].value = String.format("**Commands**  `[ {0}", commands);
 
-                if(i != target.command.length - 1) i++, embed.fields[0].value += ", ";
-                else i++, embed.fields[0].value += " ]`";
-            })
-
-            if(!i) embed.fields[0].value = "**Commands**  `[ n/a ]`";
-            else i = 0;
+            if(!commands) target.command.forEach(function(c){
+                i++, embed.fields[0].value += c;
+                embed.fields[0].value += i != target.command.length ? ", " : " ]`";
+            }); else embed.fields[0].value += " ]`";
 
             // generates options column
+            i = 0, embed.fields[0].value += "\n\n**<i> options available**\n\n";
+
             for(var keys in target.options) {
-                if(i < 1) embed.fields[0].value += "\n\n**<i> options available**\n\n";
-                embed.fields[0].value += "    **" + keys + "**  `[ " + target.options[keys].cmds.join(", ") + " ]`\n";                
-                embed.fields[0].value += "    " + target.options[keys].desc + "\n\n";
+                var options = target.options[keys].cmds.join(", ");
+                embed.fields[0].value += String.format("    **{0}**  `[ {1} ]` \n", keys, options);
+                embed.fields[0].value += String.format("    {0} \n\n", target.options[keys].desc);
                 i++;
             }
-
-            var replace = [
-                { "<i>" : i },
-                { "<username>" : bot.user.username },
-                { "<#a>" : wf.alerts.length },
-                { "<#d>" : wf.dailyDeals.length },
-                { "<#f>" : wf.fissures.length },
-                { "<#i>" : function() {
-                    var index = 0;
-                    wf.invasions.forEach(function(i){
-                        if(!i.completed) index++;
-                    }); return index; }},
-                { "<#v>" : function() {
-                    if(!wf.voidTrader.active) return wf.voidTrader.startString + " until arrival";
-                    else return "mutiny is an idiot and didnt set this up yet"; }
-                }
-            ]
-
-            replace.forEach(function(r){
-                var flag = Object.keys(r);
-                
-                while(embed.fields[0].value.includes(flag))
-                    embed.fields[0].value = embed.fields[0].value.replace(flag, r[flag]);
-            })
 
             // generates account footer
             var privacy = "whitelisted";
             if(target.require == null) privacy = "guest";
             if(target.require == "admin") privacy = "admin";
 
-            embed.fields[0].value += "( *Requires " + privacy + " account. You're " + level + "!* )";      
+            embed.fields[0].value += String.format("( *Requires {0} account. You're {1}!* )", privacy, level);      
         }
+
+        var replace = [
+            { "<i>" : i },
+            { "<#a>" : wf.alerts.length },
+            { "<#d>" : wf.dailyDeals.length },
+            { "<#f>" : wf.fissures.length },
+            { "<#i>" : function() {
+                var index = 0;
+                wf.invasions.forEach(function(i){
+                    if(!i.completed) index++;
+                }); return index; }},
+            { "<#v>" : function() {
+                if(!wf.voidTrader.active) return wf.voidTrader.startString + " until arrival";
+                else return "mutiny is an idiot and didnt set this up yet"; }},
+            { "<username>" : bot.user.username },
+        ]
+
+        replace.forEach(function(r){
+            var key = Object.keys(r);
+            while(embed.fields[0].name.includes(key))
+                embed.fields[0].name = embed.fields[0].name.replace(key, r[key]);
+            
+            while(embed.fields[0].value.includes(key))
+                embed.fields[0].value = embed.fields[0].value.replace(key, r[key]);
+        })
         
         return res;
     }
 
+    // cleans string.split results
     function GetSentence(message) {
         var del = [".", "!", "?"];
         var raw = message.content.split(" ");
@@ -620,6 +683,7 @@ exports.Start = function() {
         return res;
     }
 
+    // checks if robot was called
     function GetSummon(message) {
         var user = GetUser(message);
         var res = false;
@@ -640,105 +704,169 @@ exports.Start = function() {
         return res;
     }
 
+    // find user{} in JSON cache
     function GetUser(message) {
         var res = null;
 
-        Users.forEach(function(u){
-            if(message.author.id == u.id) res = u;
-        })
+        for (var u in Users) {
+            u = Users[u];
+            if(message.author.id == u.id) {
+                res = u;
+                break;
+            }
+        }
 
         return res;
     }
     
-    function GetCommand(message, summoned) { // this should be cleaned
+    // compare string[] for elements in source
+    function IncludesElement(source, search) {
+        if(typeof source != "string") return; // crashes pls go
+        if(!Array.isArray(search)) return;    // ok arrays only
+        var sentence = source.split(" ");
+        var result = "";
+
+        for(var item in search) {
+            item = search[item];
+
+            // if item has whitespace, check whole string
+            if(item.includes(" ") && source.includes(item)) {
+                result = item;
+                break;
+
+            } else {
+
+                // else iterate for accuracy
+                for(var words in sentence) {
+                    words = sentence[words];
+                    if(words.includes(item)) {
+                        result = item;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+    
+    /**
+     * Tries to find any commands in source message
+     * Sorted into parts: key, options, help, lock
+     * key, more, lock reqired, help cancels method
+     */
+    function GetCommand(message, summoned) {
         if(!summoned) return;
 
-        var user = GetUser(message), cache = [];
-
-        var result = {
+        // (cleaned) string[] gen from input
+        var sentence = GetSentence(message);
+        var cmdCache = []; // found commands
+        var optCache = []; // found options
+        
+        var res = {
             key : "",
             word : "",
             lock : true,
             more : {},
         };
-    
-        // grabs .key and .word
-        for (var keys in core) {
-            var array = core[keys].command;
-    
-            if(!array) {
-                cache.push(keys);
-                array = [keys.toLowerCase()];
-            } 
-    
-            for (var words in array) {
-                words = array[words];
-                if(message.content.includes(words)) {
-                    result.key = keys;
-                    result.word = words;
-                    break;
+
+        // look for any commands
+        for(var keys in core) {
+            var task = core[keys];
+            var cmds = task.command; // string[] of keywords
+            var optn = task.options; // object with keywords
+
+            for(var word in sentence) {
+                word = sentence[word].toLowerCase();
+
+                // if command is found, push to cache
+                if(cmds && cmds.indexOf(word) != -1) {
+                    cmdCache.push([keys, word]);
+                } else if (word == keys.toLowerCase()) {
+                    cmdCache.push([keys, word]);
+                }
+
+                // if task has options, lookup
+                if(optn) for(var o in optn) {
+                    var array = optn[o];
+                    if(!Array.isArray(array)) // allows me to shorthand
+                        array = array.cmds;   // remove if restructured
+
+                    // if option is found, push cache
+                    if (array.indexOf(word) != -1) {
+                        if(!cmds) cmdCache.push([keys, word]);
+                        optCache.push([keys, word, o]);
+                    }
                 }
             }
         }
-    
-        // grabs .more
-        var search = result.key != "" ? [result.key] : cache;
-    
-        search.forEach(function(key) {
-            var options = core[key].options;
-    
-            // adds all defined options
-            for(var keys in options) {
-                var cmds = options[keys];
 
-                // lets me shorthand like in core.Faces
-                if (!Array.isArray(cmds)) cmds = cmds.cmds;
+        // determine res
+        if (!res.key) {
+            var c = -1; // command index cache
+            var o = -1; // option index cache
+            
+            // finds index based on options
+            if(cmdCache.length == 1) c = 0;
+            for(var cmd in cmdCache) {
+                // named cmd key, value pair
+                var cmdKey = cmdCache[cmd][0];
+                var cmdVal = cmdCache[cmd][1]
 
-                cmds.forEach(function(a){
-                    if(message.content.includes(a)){
-                        if (!result.key) result.key = key;
-                        if (key == result.key) {
-                            if (!Array.isArray(result.more[keys])) result.more[keys] = [];
-                            result.more[keys].push(a);
-                        }
+                for(var opt in optCache) {
+                    // named opt key, value pair
+                    var optKey = optCache[opt][0];
+                    var optVal = optCache[opt][1];
+
+                    // cmd && opt share key
+                    if(cmdKey == optKey) {
+                        c = c == -1 ? cmd : c; // don't overwrite twice
+                        o = o == -1 ? opt : o; // ( see above comment )
+                        break;
                     }
-                })
+                }
             }
-        })
+                    
+            if (c != -1) { // set keys
+                res.key = cmdCache[c][0];
+                res.word = cmdCache[c][1];
+            }
 
-        // generates help dialog
+            if (o != -1) // set options
+                res.more[optCache[o][2]] = optCache[o][1];
+        }
+        
+        // checks for help requests
         var HelpCommands = ["help"];
         for (var help in HelpCommands) {
             help = HelpCommands[help];
-
             if(message.content.includes(help)) {
-                if (result.key) { // help warframe, help nickname, etc
-                    var input = result.word || result.more[Object.keys(result.more)[0]][0];
-                    if (message.content.indexOf(help) < message.content.indexOf(input)) {
-                        var help = GetHelp(result, message);
+                if (res.key) { // [help] [warframe], [help] [nickname], etc - if(!res.key) ?
+                    if (message.content.indexOf(help) < message.content.indexOf(res.word)) {
+                        var help = GetHelp(res, message);
                         if (help) Speak(help, message);
                         return;
                     }
                 } else { // only help (merge these two paths later)
-                    result.key = "$DEFAULT";
-                    var help = GetHelp(result, message);
+                    res.key = "$DEFAULT";
+                    var help = GetHelp(res, message);
                     if (help) Speak(help, message);
                     return;
                 }
             }
         }
-    
-        // lets me use if(command)
-        if(!result.key) return; 
-    
-        // grabs .lock, handles user permissions
-        if(user && user.sudo) result.lock = false;
-        else if(user && core[result.key].require != "admin") result.lock = false;
-        else if(!core[result.key].require) result.lock = false;
-    
-        return result;
+
+        if(!res.key) return;
+
+        // gets .lock w/ permissions
+        var user = GetUser(message);
+        if(user && user.sudo) res.lock = false;
+        else if(user && core[res.key].require != "admin") res.lock = false;
+        else if(!core[res.key].require) res.lock = false;
+
+        return res;
     }
-    
+
     function UpdateWarframeJSON() { // return this
         axios.get('https://ws.warframestat.us/pc')
         .then(function(response){
