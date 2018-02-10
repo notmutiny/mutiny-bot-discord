@@ -1,7 +1,7 @@
 [
-    {"id":"127655681754005504","name":"mutiny","sudo":true},
-    {"id":"207691527839809537","name":"Jackarunda","sudo":false},
-    {"id":"305226394764574720","name":"Japphira","sudo":false},
-    {"id":"98084758663237632","name":"GSGregory","sudo":false},
-    {"id":"269677928458092544","name":"TheEvilPoptarts","sudo":false}
+    {"id":"127655681754005504","name":"mutiny","perm":"admin"},
+    {"id":"207691527839809537","name":"Jackarunda","perm":"user"},
+    {"id":"305226394764574720","name":"Japphira","perm":"user"},
+    {"id":"98084758663237632","name":"GSGregory","perm":"user"},
+    {"id":"269677928458092544","name":"TheEvilPoptarts","perm":"user"}
 ]
