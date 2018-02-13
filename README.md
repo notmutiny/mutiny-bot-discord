@@ -1,4 +1,4 @@
-# not mutiny
+# not mutiny    ヾ(＾∇＾)"
 My bot I write for fun. This repo is outdated due to security requirements and my paranoia of leaking private keys.
 
 `exports.Start = function() { [...] }` is included for use with my C# program. Remove those lines if used without it. 
