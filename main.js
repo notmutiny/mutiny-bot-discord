@@ -1,4 +1,8 @@
-var mutiny = "127655681754005504";
+const mutiny = "127655681754005504";
+
+let roles = {
+    "" : ""
+}
 
 // welcome to mutiny bot ヾ(＾∇＾)
 // sorry you're stuck reading this
@@ -6,7 +10,7 @@ var mutiny = "127655681754005504";
 
 exports.Start = function() {
 
-    var fs = require('fs'), // bot is stored with dropbox to update my devices 
+    let fs = require('fs'), // bot is stored with dropbox to update my devices 
         prefsFile = process.env.userprofile + "/Dropbox/mutiny bot/prefs.json",
         prefs = JSON.parse(fs.readFileSync(prefsFile)); // cache, stop disk IO 
 
@@ -14,10 +18,10 @@ exports.Start = function() {
 
     const nm = {
         /* required runtime information */
-        auth: require("./nm_modules/auth"),             // user authentication
-        core: require("./nm_modules/core"),             // offloaded functions
-        help: require("./nm_modules/help"),             // sends internal data
-        bot: new discordJS.Client(),                    // Discord.JS instance
+        auth: require("./nm_modules/auth"),
+        core: require("./nm_modules/core"),
+        help: require("./nm_modules/help"),
+        bot: new discordJS.Client(),
 
         /* extra self-contained modules */ 
         discord: require("./nm_modules/discord"),
@@ -40,21 +44,26 @@ exports.Start = function() {
 
     nm.bot.on("message", (message) => {
         if (message.author.bot) return;
-        var summoned = nm.core.summoned(message);
+        let summoned = nm.core.summoned(message);
 
         if (summoned) {
-            var request = nm.core.request(message, nm, prefs);
+            let request = nm.core.request(message, nm, prefs);
             if (!request) return; // send a request or go away
 
-            if (request.unlocked) think(request, message);
-            else nm.core.speak(nm.auth.error, message);
+            think(request, message);
         }
+
+        for (let role in roles) // attach user role emojis
+            if (message.member.roles.find("name", role)) {
+                message.react(roles[role]);
+                break;
+            }
     });
 
     // make not mutiny copy mutinys presence
     nm.bot.on("presenceUpdate", (guildmem) => {
         if (guildmem.id != mutiny) return;
-        var state = guildmem.user.presence.status;
+        let state = guildmem.user.presence.status;
         nm.bot.user.setPresence({ status: state });
     });
 
@@ -69,11 +78,18 @@ exports.Start = function() {
         reaction.remove(nm.bot.user.id);
     });
 
-    // -- main functions -- //
+    // -- bot functions -- //
 
     function think(request, message) {
-        var argument = request.argument ? request.argument.key : null;
-        nm[request.key].function(request, argument, message, nm, prefs);
+        if (request.success) {
+            let argument = request.argument ? request.argument.key : null;
+            nm[request.key].function(request, argument, message, nm, fs, prefs);            
+        } else {
+            if (nm.core.error[request.error]) {
+                let error = nm.core.randomElement(nm.core.error[request.error].main(request)) + (nm.core.error[request.error].end ? " or " + nm.core.randomElement(nm.core.error[request.error].end) : "");
+                nm.core.speak(error, message);
+            }
+        }
     }
 
     nm.bot.login( /*private key pls no steal*/ );
