@@ -1,10 +1,3 @@
-var error = {
-    mentions: {
-        body: ["mention a user with that command"],
-        end: ["I won't know who you mean", "I will be confused", "I won't be able to help"]
-    }
-}
-
 module.exports = {
     commands: ["discord"],
     summary: "Utilize features provided by discord.js",
@@ -60,18 +53,16 @@ module.exports = {
                     response.push(user.avatarURL);
                 });
                 
-                if (response.length == 0)
-                    response = error.mentions.body + " or else " + nm.core.randomElement(error.mentions.end);    
-                else if (response.length == 1) response = response[0];
+                if (response.length == 1) response = response[0];
                 else response = response.join(" \n");
                 nm.core.speak(response, message);
                 return;
 
             case "delete":
                 var last = nm.bot.user.lastMessage;
-                if (!last) console.log("Error: Cannot find message to delete");
-                else if (last.deletable) last.delete();
-                return;
+                if (last && last.deletable) // discord API needs to stop returning deleted messages
+                    last.delete().catch(e => console.log("Error: Cannot find message to delete"));
+                return; // everyone point and laugh at the API that can't send updated information
 
             case "listening":
             case "nickname":
