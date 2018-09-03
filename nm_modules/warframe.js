@@ -5,6 +5,7 @@ module.exports = {
     commands: ["wf", "warframe"],
     summary: "Get the latest Warframe PC worldstate data",
     picture: "https://i.imgur.com/wiwwzmZ.png",
+    github: "https://github.com/notmutiny/mutiny-bot-discord/blob/master/nm_modules/warframe.js",
 
     arguments: {
         "alerts": {
@@ -314,7 +315,7 @@ function generateWikiUrl(item) {
     var url = "https://warframe.wikia.com/wiki/",
         res = item;
 
-    // this is so dirty but I literally don't give a flip
+    // this is digital garbage I need to rework this
     while (res.includes(" ")) res = res.replace(" ", "_");
     while (res.includes("_Of_")) res = res.replace("_Of_", "_of_");
     while (res.includes("_Weapon")) res = res.replace("_Weapon", "");
