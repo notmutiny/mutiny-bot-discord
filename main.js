@@ -12,38 +12,34 @@ exports.Start = function() {
 
     let fs = require('fs'), // bot is stored with dropbox to update my devices 
         prefsFile = process.env.userprofile + "/Dropbox/mutiny bot/prefs.json",
-        prefs = JSON.parse(fs.readFileSync(prefsFile)); // cache, stop disk IO 
+        prefs = JSON.parse(fs.readFileSync(prefsFile)), // cache, stop disk IO 
 
-    const discordJS = require("discord.js");
+        /* prepackaged modules */
+        axios = require("axios"),
+        discordJS = require("discord.js"),
+        gSearch = require("google-search");
 
     const nm = {
         /* required runtime information */
-        auth: require("./nm_modules/auth"),
-        core: require("./nm_modules/core"),
-        help: require("./nm_modules/help"),
+        core: require("./nm_modules/core")(),
+        auth: require("./nm_modules/auth")(prefs, prefsFile, fs),
+        help: require("./nm_modules/help")(prefs),
         bot: new discordJS.Client(),
 
-        /* extra self-contained modules */ 
-        discord: require("./nm_modules/discord"),
-        search: require("./nm_modules/search"),
-        warframe: require("./nm_modules/warframe")
+        /* additional self-contained modules */ 
+        discord: require("./nm_modules/discord")(),
+        search: require("./nm_modules/search")(gSearch),
+        warframe: require("./nm_modules/warframe")(axios)
     }
 
     // -- discord events -- //
 
     nm.bot.on("ready", () => {
         console.log("nm started w/ " + nm.bot.users.size + " users in " + nm.bot.channels.size + " channels of " + nm.bot.guilds.size + " servers");
-
-        // replace not mutinys presence with mutinys status on start
-        nm.core.getUserStatus(mutiny, nm.bot).then(function(state) {
-            nm.bot.user.setPresence({ status: state });
-        }).catch(function(err) { // catch or node will be mad :(
-            console.log("nm is being stupid because of " + err);
-        });
+        start();
     });
 
     nm.bot.on("message", (message) => {
-        if (message.author.bot) return;
         let summoned = nm.core.summoned(message);
 
         if (summoned) {
@@ -53,7 +49,7 @@ exports.Start = function() {
             think(request, message);
         }
 
-        for (let role in roles) // attach user role emojis
+        for (let role in roles) // react emoji to user role
             if (message.member.roles.find("name", role)) {
                 message.react(roles[role]);
                 break;
@@ -74,22 +70,26 @@ exports.Start = function() {
     });
     
     nm.bot.on("messageReactionRemove", (reaction, user) => {  
-        if (user.id != mutiny) return;
+        if (user.id != mutiny && user.id != "207691527839809537") return;
         reaction.remove(nm.bot.user.id);
     });
 
     // -- bot functions -- //
 
+    function start() {
+        // replace not mutinys presence with mutinys status on start
+        nm.core.getUserStatus(mutiny, nm.bot).then(function(state) {
+            nm.bot.user.setPresence({ status: state });
+        }).catch(function(err) { // catch or node will be mad :(
+            console.log("nm is being stupid because of " + err);
+        });
+    }
+
     function think(request, message) {
         if (request.success) {
             let argument = request.argument ? request.argument.key : null;
-            nm[request.key].function(request, argument, message, nm, fs, prefs);            
-        } else {
-            if (nm.core.error[request.error]) {
-                let error = nm.core.randomElement(nm.core.error[request.error].main(request)) + (nm.core.error[request.error].end ? " or " + nm.core.randomElement(nm.core.error[request.error].end) : "");
-                nm.core.speak(error, message);
-            }
-        }
+            nm[request.key].function(request, argument, message, nm);            
+        } else nm.core.error(request, message);
     }
 
     nm.bot.login( /*private key pls no steal*/ );
