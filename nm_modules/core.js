@@ -1,150 +1,105 @@
 // keywords users can send to summon the robot
-let summons = ["nm", "<@!318244733975658496>"];
+let summons = ["nm", "<@!318244733975658496>"],
+    avatars = [ // thumbnails representing not mutiny
+        "https://i.imgur.com/iqYZUKk.png", // default
+        "https://i.imgur.com/hRi8aBp.png", // angry
+        "https://i.imgur.com/KDa3nG0.png", // closed
+        "https://i.imgur.com/jvPU6pT.png", // happy
+        "https://i.imgur.com/RqS9KN4.png", // tired
+        "https://i.imgur.com/upB6PcK.png", // worried
+    ],
 
-// merge command and argument requirements
-function getRequirements(script, argument) {
-    let requirements = {};
-
-    if (script.require) 
-        // check command requirements
-        for (let r in script.require) {
-            let requirement = script.require[r];
-            if (requirement && !requirements[r])
-                requirements[r] = requirement;
+    errors = {
+        account: { // command is locked
+            main: function() { return ["｡゜(｀Д´)゜｡", "ლಠ益ಠ)ლ", "(-_-;)・・・", "w(°ｏ°)w"] },
+        },
+        mention: { // command needs user menion
+            main: function(request) { return ["mention a user with " + (request.argument ? request.argument.command : request.command)]; },
+            end: ["or I won't know who you mean", "or I won't be able to help", "or I can't do anything"]
         }
-    
-    if (argument && script.arguments[argument.key].require)
-        // check argument requirements, overwrite lesser values
-        for (let r in script.arguments[argument.key].require) {
-            let requirement = script.arguments[argument.key].require[r];
+    };
 
-            if (requirement) {
-                if (requirements[r]) {
-                    if (requirement > requirements[r])
-                        // overwrite lesser requirement
-                        requirements[r] = requirement;
-                } else requirements[r] = requirement;
-            }
-        }
-
-    // console.log(requirements);
-    return requirements;
-}
-
-// check requirements result for success or error
-function checkRequirements(detection, message) {
-    let requirements = detection.cache.requirements,
-        account = detection.query.author.account,
-        command = detection.query.command;
-
-    let result = { success: true, error: "" };
-    // detections returned in ascending order!
-
-    for (let r in requirements) {
-        // this might error on req value 0
-        let requirement = requirements[r];
-
-        // request required account level is greater than author
-        if (r == "account" && account < requirements.account) {
-            result = { success: false, error: r }
-            break;
-        }
-
-        // request did not send command
-        if (r == "command" && !command) {
-            result = { success: false, error: r }
-            break;
-        }
-
-        // request did not send mention
-        if (r == "mention") {
-            let total = 0; // stupid collection data type
-            message.mentions.users.forEach(function(u) {
-                total++; // can't length gotta increment
-            });
-            if (total == 0) { // ugly code is ugly >:(
-                result = { success: false, error: r }
-                break;
-            }
-        } 
-    }
-
-    return result;
-}
-
-module.exports = {
-
+module.exports = function() {
     // return embed with preconfigured template data
-    embed: function(header, title, value, picture) {
+    module.embed = function(header, title, value, picture) {
         let ascii = ["´ ▽ ` )ﾉ","ヾ(＾∇＾)","(´・ω・｀)","\_(:3」∠)\\\_", "(°ロ°) !"],
             emoji = ":small_orange_diamond:";
 
+        let pfp = "https://i.imgur.com/iqYZUKk.png";
+        // 33% chance to show unique embedded avatar 
+        if (module.random(0, 3) == 0) {
+            avatars.slice(0, 1); // remove default image
+            pfp = module.randomElement(avatars);
+        }
+
         return { embed: {
-            description: header + "   " + module.exports.randomElement(ascii),
+            description: header + "   " + module.randomElement(ascii),
             color: 10249740,
             footer: {
                 icon_url: "https://i.imgur.com/biOZ0au.png",
                 text: "https://github.com/notmutiny/" },
             thumbnail: {
-                url: picture || "https://cdn.discordapp.com/avatars/318244733975658496/166fd4bc92322ed291c8515f5f2c6ff2.png" },
+                url: picture || pfp },
             fields: [
-                {
+                { // use discords empty text if nones provided
                     name: title ? emoji + "  " + title : "_ _",
                     value: value ? value : "_ _",
                 },
             ]
         }}
-    },
+    };
 
-    error: {
-        account: {
-            main: function() { return ["｡゜(｀Д´)゜｡", "ლಠ益ಠ)ლ", "(-_-;)・・・", "w(°ｏ°)w"] },
-        },
-        mention: {
-            main: function(request) { return ["mention a user with " + (request.argument ? request.argument.command : request.command)]; },
-            end: ["I won't know who you mean", "I will be confused", "I won't be able to help"]
-        }
-    },
+    // generate error for unsuccessful request
+    module.error = function(request, message) {
+        let response = module.randomElement(errors[request.error].main(request)) + (errors[request.error].end ? " " + module.randomElement(errors[request.error].end) : "");
+        // pull and merge responses from errors object using RNG elements, making messages more fluid
 
-    // return any detected requirements
-    getRequirements: function(object) {
+        if (response) // send error message 
+            module.speak(response, message);
+        else // function is broken burn it down
+            console.log("Error: error() could not generate error response");
+    }
+
+    // return detected requirements for command
+    module.getRequirements = function(object) {
         if (!object || !object.require) return null;
         
         let result = {};
-        for (var r in object.require) {
+        for (let r in object.require) {
             result[r] = object.require[r];
         }
 
         return result;
-    },
+    };
     
-    // returns "online", "away", "dnd"
-    getUserStatus: function(id, bot) {
+    // returns string "online", "away", "dnd"
+    module.getUserStatus = function(id, bot) {
         return new Promise(function(resolve, reject) {
             bot.fetchUser(id, false).then(function(user) {
                 resolve(user.presence.status);
             });
         });
-    },
+    };
 
     // returns random number
-    random: function(min, max) {
+    module.random = function(min, max) {
         min = Math.ceil(min);
         max = Math.floor(max);
         return Math.floor(Math.random() * (max - min)) + min;
-    },
+    };
     
     // returns random array element
-    randomElement: function(array) {
+    module.randomElement = function(array) {
         if (!Array.isArray(array)) return;
-        return array[module.exports.random(0, array.length)];
-    },
+        if (array.length == 0) return [];
+        return array[module.random(0, array.length)];
+    };
     
     // return script commands found in message
-    request: function(message, scripts, prefs) {
-        let account = scripts.auth.getLevel(message.author, prefs),     // user level associated with bot use
-            sentence = cleanSentence(message),                          // cleaned message for better accuracy
-            detections = [];                                            // detected commands in input message
+    module.request = function(message, scripts, prefs) {
+        let account = getUserLevel(message.author, prefs),  // user level associated with bot use
+            sentence = cleanSentence(message),              // cleaned message for better accuracy
+            detections = [];                                // detected commands in input message
 
         for (let key in scripts) {
             let script = scripts[key];
@@ -155,7 +110,7 @@ module.exports = {
 
             if (command || argument) {
                 detections.push({
-                    cache: {
+                    cache: { // cache for private use, compare and determine which query to return
                         index: (command ? message.content.indexOf(command) : message.content.indexOf(argument.command)),
                         requirements: getRequirements(script, argument),
                     },  
@@ -183,7 +138,7 @@ module.exports = {
         // give me request detection or get out
         if (detections.length < 1) return null;
     
-        
+
         // -- TEMPORARY LAND OF SPAGHETTI CODE -- //
 
         // determine best command 
@@ -191,7 +146,7 @@ module.exports = {
 
         detections.forEach(function(detection) {
             // cache and compare previous result
-            var cache = null; 
+            let cache = null; 
 
             // prioritize queries that appear first in message
             if (detection.cache.index < result.cache.index) {
@@ -216,42 +171,94 @@ module.exports = {
         // -- END TEMPORARY LAND OF SPAGHETTI CODE -- //
 
         return result.query;
-    },
+    };
 
     // sends channel messages
-    speak(response, message) {
+    module.speak = function(response, message) {
+        if (!response) { // make sure response contents aren't missing
+            console.log("Error: speak() cannot send an empty message");
+            return;
+        } 
+
         let result = response;
+        // allow string or array input
         if (Array.isArray(response)) {
-            if (response.length == 0) return;
-            else result = module.exports.randomElement(response);
+            if (response.length == 0) return; // double checking
+            else result = module.randomElement(response);
         }
 
         message.channel.startTyping();
+        // "I am not a robot" - robot
         setTimeout(function() {
             message.channel.stopTyping();
             message.channel.send(result);
         }, 250 + Math.random() * 750);
-    },
+    };
 
     // check if a user called bot
-    summoned: function(message) {
+    module.summoned = function(message) {
+        if (message.author.bot) return false;
+        // bots need to stop spamming my bot
+
         let sentence = message.content.split(" "),
             cache = { summon: false, index: -1 };
 
+        // get first instance of summoning
         summons.forEach(function(summon) {
             let index = sentence.indexOf(summon);
 
             if (index > -1) { // ensures first summon, not last
                 if (cache.index == -1 || index < cache.index) {
-                    cache.summon = summon;
-                    cache.index = index;
+                    cache.summon = summon; // cache returned value
+                    cache.index = index; // cache index comparison
                 }
             }
         });
 
+        // return nm / false
         return cache.summon;
-    },
+    };
+
+    return module;
 };
+
+// check getRequirements result success or error
+function checkRequirements(detection, message) {
+    let requirements = detection.cache.requirements,
+        account = detection.query.author.account,
+        command = detection.query.command;
+
+    let result = { success: true, error: "" };
+    // detections returned in ascending order!
+
+    for (let r in requirements) {
+        // request required account level is greater than author
+        if (r == "account" && account < requirements.account) {
+            result = { success: false, error: r }
+            break;
+        }
+
+        // request did not send command
+        if (r == "command" && !command) {
+            result = { success: false, error: r }
+            break;
+        }
+
+        // request did not send mention
+        if (r == "mention") {
+            let total = 0; // stupid collection data type
+            message.mentions.users.forEach(function(u) {
+                total++; // can't length gotta increment
+            });
+            if (total == 0) { // ugly code is ugly >:(
+                result = { success: false, error: r }
+                break;
+            }
+        } 
+    }
+
+    return result;
+}
 
 // sanitizes message into string[]
 function cleanSentence(message) {
@@ -294,10 +301,50 @@ function findArgument(sentence, object) {
         if (command)
             return {
                 key: a,
-                command: command,
-                // require: module.exports.getRequirements(argument)
+                command: command
             }
     }
 
     return null;
 }
+
+// merge command and argument requirements
+function getRequirements(script, argument) {
+    let requirements = {};
+
+    if (script.require) 
+        // check command requirements
+        for (let r in script.require) {
+            let requirement = script.require[r];
+            if (requirement && !requirements[r])
+                requirements[r] = requirement;
+        }
+    
+    if (argument && script.arguments[argument.key].require)
+        // check argument requirements, overwrite lesser values
+        for (let r in script.arguments[argument.key].require) {
+            let requirement = script.arguments[argument.key].require[r];
+
+            if (requirement) {
+                if (requirements[r]) {
+                    if (requirement > requirements[r])
+                        // overwrite lesser requirement
+                        requirements[r] = requirement;
+                } else requirements[r] = requirement;
+            }
+        }
+
+    return requirements;
+}
+
+// returns saved users level
+function getUserLevel(author, prefs) {
+    for (let id in prefs.users) {
+        if (author.id == id) {
+            // 1 = user, 2 = admin
+            return prefs.users[id];
+        }
+    }
+    
+    return 0; // 0 = guest
+};
