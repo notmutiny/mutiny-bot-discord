@@ -7,7 +7,7 @@ let footer = {
         fluff: ["Most features are unlocked!", "Try combining help with a command!"]},
     2: { 
         level: "You're an admin!",
-        fluff: ["Am I behaving well?", "Glory be upon you.", "Too OP pls nerf.", "All features are unlocked!"]
+        fluff: ["Am I behaving well?", "Glory be upon you.", "Too OP pls nerf.", "Everything is unlocked!"]
     },
 }
 
@@ -17,13 +17,15 @@ let requireStrings = {
     command: "command use"
 }
 
-module.exports = {
-    commands: ["help"],
-    summary: function(nm) {
-        return "Get assistance with " + nm.bot.user.username + "'s commands";
-    },
+// todo
+// make examples use requirements
+// add source code in footer ?
 
-    function: async function(request, argument, message, nm, fs, prefs) {
+module.exports = function(prefs) {
+    module.commands = ["help"];
+    module.summary = function(nm) { return "Check info about " + nm.bot.user.username + "'s commands" };
+    
+    module.function = async function(request, argument, message, nm) {
         let array = message.content.split(" "),
             index = array.indexOf(request.command);
             // rescan commands to force modularity
@@ -63,7 +65,9 @@ module.exports = {
         value += "**" + footer[request.author.account].level + "** " + nm.core.randomElement(footer[request.author.account].fluff);
         let embed = nm.core.embed(header, title, value, thumbnail);        
         nm.core.speak(embed, message);
-    },
+    };
+
+    return module;
 };
 
 
@@ -140,12 +144,12 @@ async function generateArgumentDisplay(request, nm) {
 
     if (unlocked.length > 0) { // generate unlocked message followed by unlocked arguments
         result += ":unlock: **" + unlocked.length + " unlocked argument" + (unlocked.length > 1 ? "s" : "") + "**\n\n";
-        result += unlocked.join("\n\n") + "\n\n";
+        result += unlocked.sort().join("\n\n") + "\n\n";
     }
 
     if (locked.length > 0) { // generate locked message followed by locked arguments
         if (!commandLocked) result += ":lock: **" + locked.length + " locked argument" + (locked.length > 1 ? "s" : "") + "**\n\n";
-        result += locked.join("\n\n") + "\n\n";
+        result += locked.sort().join("\n\n") + "\n\n";
     }
 
     return result;
@@ -160,18 +164,18 @@ async function generateCategoryDisplay(request, nm) {
 
         // only pull from categories with commands
         if (script.commands || script.arguments) {
-            let command = script.commands ?
-                "`[ " + script.commands[0] + " ]`" : "`{ " + key + " }`";
-                // change brackets if theres no available commands to use
-
+            let command = "`< " + (script.commands ? script.commands[0] : key) + " >`";
             let summary = await getSummary(script, nm);
             categories.push(command + " " + summary);
             // [ discord ] does stuff omg wow so cool
         }
     }
 
+    // sort alphabetically
+    categories.sort();
+
     return "**" + categories.length + " categor" + (categories.length > 1 ? "ies" : "y") + 
-        " shown.** These are also commands!\n\n" + categories.join("\n\n");
+        " shown.** These are also bot commands!\n\n" + categories.join("\n\n");
         // 5 categories shown. These are also bot commands! (+ categories[])
 }
 
