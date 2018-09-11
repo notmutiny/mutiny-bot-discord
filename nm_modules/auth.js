@@ -1,28 +1,10 @@
-function getResponses(mentions, argument) {
-    let save = Object.keys(module.exports.arguments)[0],
-        user = []; // affected mentions usernames 
-        
-    mentions.forEach(function(m) {
-        user.push(m.name);
-    });
+module.exports = function(prefs, prefsFile, fs) {
+    module.commands = ["users", "user", "auth"];
+    module.summary = function(nm) { return "Configure " + nm.bot.user.username + "'s whitelisted users" };
+    module.picture = "https://i.imgur.com/Ik6B7YF.png";
+    module.require = { account: 2 };
 
-    if (user.length > 0) return [
-        user.join(", ") + (user.length > 1 ? " have" : " has") + " been " + (argument == save ? "added to" : "removed from") + " my users",
-        "I " + (argument == save ? "added " : "removed ") + user.join(", ") + (argument == save ? " to" : " from") + " my users" ]
-    else return ""; 
-}
-
-module.exports = {
-
-    commands: ["auth", "user", "users"],
-    summary: function(nm) { 
-        return "Configure " + nm.bot.user.username + "'s whitelisted users"},
-    picture: "https://i.imgur.com/xrHpWeX.png",
-    require: {
-        account: 2,
-    },
-
-    arguments: {
+    module.arguments = {
         "save": {
             commands: ["add", "save"],
             summary: "Add mentioned users to whitelist",
@@ -40,9 +22,9 @@ module.exports = {
                 command: true,
             }
         }
-    },
+    };
 
-    function: function(request, argument, message, nm, fs, prefs) {
+    module.function = function(request, argument, message, nm) {
         let success = false,
             mentions = [];
 
@@ -78,8 +60,8 @@ module.exports = {
                     users = [],
                     value = "";
 
-                for (var id in prefs.users) {
-                    var user = prefs.users[id];
+                for (let id in prefs.users) {
+                    let user = prefs.users[id];
 
                     if (user == 2)
                         admin.push("<@" + id + ">");
@@ -97,7 +79,7 @@ module.exports = {
                     "Here's my saved users",
                     (admin.length + users.length) + " whitelisted users",
                     value,
-                    module.exports.picture
+                    module.picture
                 )
 
                 nm.core.speak(embed, message);
@@ -105,33 +87,33 @@ module.exports = {
         }
 
         if (success) {
-            fs.writeFile(process.env.userprofile + "/Dropbox/mutiny bot/prefs.json", JSON.stringify(prefs, null, "\t"), 'utf8', function(err){
+            fs.writeFile(prefsFile, JSON.stringify(prefs, null, "\t"), 'utf8', function(err){
                 if(err) throw err;
             }); 
-            var response = nm.core.randomElement(getResponses(mentions, argument));
+            let response = nm.core.randomElement(getResponses(mentions, argument));
             nm.core.speak(response, message);
         }
-    },
-
-    // do I even use this anywhere
-    // im too scared to delete it rn
-    titles: ["guest", "user", "admin"],
-
-    // returns saved users level
-    getLevel: function(author, prefs) {
-        for (var id in prefs.users) {
-            if (author.id == id) {
-                // 1 = user, 2 = admin
-                return prefs.users[id];
-            }
-        }
-        
-        return 0; // 0 = guest
-    },
+    };
 
     // check if command is unlocked for sender
-    unlocked: function(author, requirement) {
+    module.unlocked = function(author, requirement) {
         if (!requirement) return true;
         return author >= requirement;
     }
+
+    return module;
 };
+
+function getResponses(mentions, argument) {
+    let save = Object.keys(module.arguments)[0],
+        user = []; // updated mentions usernames 
+        
+    mentions.forEach(function(m) {
+        user.push(m.name);
+    });
+
+    if (user.length > 0) return [
+        user.join(", ") + (user.length > 1 ? " have" : " has") + " been " + (argument == save ? "added to" : "removed from") + " my users",
+        "I " + (argument == save ? "added " : "removed ") + user.join(", ") + (argument == save ? " to" : " from") + " my users" ]
+    else return ""; 
+}
