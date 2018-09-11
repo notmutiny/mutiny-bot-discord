@@ -1,37 +1,33 @@
-const googleSearch = require("google-search");
-const search = new googleSearch({
-    key: "private key pls no steal" ,
-    cx: "private key pls no steal"
-});
+module.exports = function(googleSearch) {
+    module.commands = ["search", "find", "google"];
+    module.picture = "https://i.imgur.com/boRehwg.png";
+    module.summary = "Fetch requested internet search results";
+    module.require = { account: 1, textInput: true };
 
-module.exports = {
-    commands: ["search", "find", "google"],
-    picture: "https://i.imgur.com/boRehwg.png",
-    summary: "Fetch requested internet search results",
-    require: {
-        account: 1,
-        textInput: true,
-    },
+    const search = new googleSearch({
+        key: "private key pls no steal",
+        cx: "private key pls no steal"
+    });
 
-    function: function(request, argument, message, nm) {
-        var words = message.content.split(" ");
-        var query = words.slice(words.indexOf(request.command) + 1, words.length);
+    module.function = function(request, argument, message, nm) {
+        let words = message.content.split(" "),
+            query = words.slice(words.indexOf(request.command) + 1, words.length);
         if (query.length < 1) return;
+        
         query = query.join(" ");
-
         search.build({
             q: query,
             num: 1, 
         }, function(error, response) {
 
             if (response.items) {
-                var header = "Here's what I found for **" + query + "**",
+                let header = "Here's what I found for **" + query + "**",
                     title = cleanTitle(response.items[0].title),
                     value = cleanValue(response.items[0].snippet) + "\n\n" + response.items[0].link;
                     thumb = (response.items[0].pagemap && response.items[0].pagemap.cse_thumbnail) ?
                         response.items[0].pagemap.cse_thumbnail[0].src : module.exports.picture;
 
-                var embed = nm.core.embed(header, title, value, thumb);
+                let embed = nm.core.embed(header, title, value, thumb);
                 nm.core.speak(embed, message);
             }
 
@@ -44,12 +40,13 @@ module.exports = {
                 })
         })
     }
+
+    return module;
 };
 
 // make result title look nice
 function cleanTitle(string) {
-    
-    var trash = ["\|", " - "], 
+    let trash = ["\|", " - "], 
         cache = [];
         
     trash.forEach(function(t) {
@@ -64,7 +61,7 @@ function cleanTitle(string) {
 
 // make result body look nice
 function cleanValue(string) {
-    var cache = string;
+    let cache = string;
 
     while (cache.includes("\n"))
         cache = cache.replace("\n", "");
