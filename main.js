@@ -17,6 +17,7 @@ exports.Start = function() {
         /* prepackaged modules */
         axios = require("axios"),
         discordJS = require("discord.js"),
+        gImages = require("google-images"),
         gSearch = require("google-search");
 
     const nm = {
@@ -28,7 +29,7 @@ exports.Start = function() {
 
         /* additional self-contained modules */ 
         discord: require("./nm_modules/discord")(),
-        search: require("./nm_modules/search")(gSearch),
+        search: require("./nm_modules/search")(gImages, gSearch),
         warframe: require("./nm_modules/warframe")(axios)
     }
 
@@ -89,7 +90,9 @@ exports.Start = function() {
         if (request.success) {
             let argument = request.argument ? request.argument.key : null;
             nm[request.key].function(request, argument, message, nm);            
-        } else nm.core.error(request, message);
+        } else {
+            nm.core.error(request, message);
+        }
     }
 
     nm.bot.login( /*private key pls no steal*/ );
