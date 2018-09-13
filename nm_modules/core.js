@@ -20,6 +20,28 @@ let summons = ["nm", "<@!318244733975658496>"],
     };
 
 module.exports = function() {
+
+    // sanitize string input, removing any request data
+    module.cleanQuery = function(string, request, snips) {
+        let argument = request.argument ? request.argument.command : null,
+            command = request.command,
+            array = string.split(" ");
+    
+        if (command && array.indexOf(command) > -1) // del request command
+            array = array.slice(array.indexOf(command) + 1, array.length);
+    
+        if (argument && array.indexOf(argument) > -1) // del argument command
+            array = array.slice(array.indexOf(argument) + 1, array.length);
+    
+        // remove any additional keywords leading the return query
+        if (snips && snips.length > 0) snips.forEach(function(s) {
+            if (array[0].toLowerCase() == s.toLowerCase()) array.shift();
+            // eg "find images of", "find images" removed -> "of" is left
+        });
+    
+        return array.join(" ");
+    }
+
     // return embed with preconfigured template data
     module.embed = function(header, title, value, picture) {
         let ascii = ["´ ▽ ` )ﾉ","ヾ(＾∇＾)","(´・ω・｀)","\_(:3」∠)\\\_", "(°ロ°) !"],
@@ -50,9 +72,11 @@ module.exports = function() {
     };
 
     // generate error for unsuccessful request
-    module.error = function(request, message) {
-        let response = module.randomElement(errors[request.error].main(request)) + (errors[request.error].end ? " " + module.randomElement(errors[request.error].end) : "");
-        // pull and merge responses from errors object using RNG elements, making messages more fluid
+    module.error = function(request, message, object) {
+        let response = object ? // pull and merge responses from errors object using RNG elements, making messages more fluid 
+            module.randomElement(object.main(request)) + (object.end ? " " + module.randomElement(object.end) : "") :
+            module.randomElement(errors[request.error].main(request)) + (errors[request.error].end ? " " + module.randomElement(errors[request.error].end) : "");
+            
 
         if (response) // send error message 
             module.speak(response, message);
@@ -179,6 +203,11 @@ module.exports = function() {
             console.log("Error: speak() cannot send an empty message");
             return;
         } 
+
+        if (!message) {
+            console.log("Error: speak() cannot find message channel");
+            return;
+        }
 
         let result = response;
         // allow string or array input
